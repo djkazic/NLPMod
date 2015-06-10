@@ -54,7 +54,7 @@ public class App {
 								if(last.contains("Building binary tree") && !notifiedBinary) {
 									pushNotification("Constructing binary tree structure");
 									notifiedBinary = true;
-								} else if(last.contains("Sent")) {
+								} else if(last.contains("Sent") && !last.contains("weights")) {
 									//int sentIndex = last.indexOf("Sent");
 									String[] split = last.split(" ");								
 									int numberSent = Integer.parseInt(split[split.length - 1].trim());
@@ -78,8 +78,6 @@ public class App {
 			pushNotification("Finished training");
 			SerializationUtils.saveObject(vector, path);
 		}
-		//vector.getWordVectorMatrix("oil").
-		//System.out.printf("%f\n", vector.similarity("oil", "gas"));
 	}
 	
 	private static void pushNotification(String pushText) {

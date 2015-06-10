@@ -1,4 +1,4 @@
-package org.djkazic.cortex.NLPMod;
+package org.djkazic.cortex.NLPMod.main;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +12,7 @@ import org.deeplearning4j.text.sentenceiterator.SentencePreProcessor;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.UimaTokenizerFactory;
 import org.deeplearning4j.util.SerializationUtils;
+import org.djkazic.cortex.NLPMod.console.LoggedPrintStream;
 
 public class App {
 
@@ -47,7 +48,7 @@ public class App {
 						try {
 							String last = null;
 							System.setOut(lpsOut);
-							last = lpsOut.buf.toString();
+							last = lpsOut.getBuf().toString();
 							//System.setOut(lpsOut.underlying);
 							if(last != null) {
 								if(last.contains("Building binary tree") && !notifiedBinary) {

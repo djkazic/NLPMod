@@ -91,7 +91,7 @@ public class App {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			waitTime = 1800; //Adds a half hour pause for rate-limiting
+			waitTime = 1800000; //Adds a half hour pause for rate-limiting
 		}
 	}
 }

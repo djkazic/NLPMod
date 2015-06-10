@@ -1,4 +1,4 @@
-package org.djkazic.cortex.NLPMod.main;
+package org.djkazic.cortex.NLPMod;
 
 import java.io.File;
 import java.io.IOException;

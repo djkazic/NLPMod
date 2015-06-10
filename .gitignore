@@ -15,6 +15,8 @@ local.properties
 .classpath
 .settings/
 .loadpath
+logs/
+*.class
 
 # External tool builders
 .externalToolBuilders/
@@ -29,4 +31,7 @@ local.properties
 .buildpath
 
 # Train data directory
-trainData/
+trainDir/
+
+#W2Vec
+word2vec-index/

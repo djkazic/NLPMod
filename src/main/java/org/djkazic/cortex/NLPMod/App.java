@@ -2,7 +2,9 @@ package org.djkazic.cortex.NLPMod;
 
 import java.io.File;
 import java.io.IOException;
+
 import net.iharder.jpushbullet2.PushbulletClient;
+
 import org.apache.uima.resource.ResourceInitializationException;
 import org.deeplearning4j.models.word2vec.Word2Vec;
 import org.deeplearning4j.text.inputsanitation.InputHomogenization;
@@ -54,10 +56,15 @@ public class App {
 								if(last.contains("Building binary tree") && !notifiedBinary) {
 									pushNotification("Constructing binary tree structure");
 									notifiedBinary = true;
-								} else if(last.contains("Sent") && !last.contains("weights")) {
+								} else if(last.contains("Sent")) {
 									//int sentIndex = last.indexOf("Sent");
 									String[] split = last.split(" ");								
-									int numberSent = Integer.parseInt(split[split.length - 1].trim());
+									int numberSent = -1;
+									try {
+										numberSent = Integer.parseInt(split[split.length - 1].trim());
+									} catch (Exception e) {
+										continue;
+									}
 									if(numberSent < 2000000 && (numberSent % 1000000) == 0
 									   || numberSent > 2000000 && (numberSent % 200000) == 0) {
 										pushNotification("Lines sent: " + numberSent);

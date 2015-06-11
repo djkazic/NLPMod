@@ -3,6 +3,7 @@ package org.djkazic.cortex.NLPMod;
 import java.io.File;
 import java.io.IOException;
 
+import net.iharder.jpushbullet2.Callback;
 import net.iharder.jpushbullet2.PushbulletClient;
 
 import org.apache.uima.resource.ResourceInitializationException;
@@ -42,6 +43,8 @@ public class App {
 			TokenizerFactory tf = new UimaTokenizerFactory();
 			vector = new Word2Vec.Builder().windowSize(5).layerSize(300)
 					.iterate(iter).tokenizerFactory(tf).build();
+			
+			//PB sender
 			(new Thread() {
 				public void run() {
 					LoggedPrintStream lpsOut = LoggedPrintStream.create(System.out);
@@ -51,7 +54,6 @@ public class App {
 							String last = null;
 							System.setOut(lpsOut);
 							last = lpsOut.getBuf().toString();
-							//System.setOut(lpsOut.underlying);
 							if(last != null) {
 								if(last.contains("Building binary tree") && !notifiedBinary) {
 									pushNotification("Constructing binary tree structure");
@@ -81,6 +83,7 @@ public class App {
 					}
 				}
 			}).start();
+			
 			vector.fit();
 			pushNotification("Finished training");
 			SerializationUtils.saveObject(vector, path);

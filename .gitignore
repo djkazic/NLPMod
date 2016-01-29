@@ -16,6 +16,7 @@ local.properties
 .settings/
 .loadpath
 logs/
+.idea/
 *.class
 
 # External tool builders
@@ -35,3 +36,4 @@ trainDir/
 
 #W2Vec
 word2vec-index/
+/target/

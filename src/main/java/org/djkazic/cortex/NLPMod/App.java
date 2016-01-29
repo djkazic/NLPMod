@@ -2,131 +2,104 @@ package org.djkazic.cortex.NLPMod;
 
 import java.io.File;
 import java.io.IOException;
-import net.iharder.jpushbullet2.PushbulletClient;
+import java.io.PrintStream;
+import java.util.Arrays;
+
 import org.apache.uima.resource.ResourceInitializationException;
+import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.word2vec.Word2Vec;
+import org.deeplearning4j.models.word2vec.wordstore.inmemory.InMemoryLookupCache;
 import org.deeplearning4j.text.inputsanitation.InputHomogenization;
 import org.deeplearning4j.text.sentenceiterator.FileSentenceIterator;
 import org.deeplearning4j.text.sentenceiterator.SentenceIterator;
 import org.deeplearning4j.text.sentenceiterator.SentencePreProcessor;
-import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.UimaTokenizerFactory;
-import org.deeplearning4j.util.SerializationUtils;
-import org.djkazic.cortex.NLPMod.console.LoggedPrintStream;
-
 public class App {
 
-	private static Word2Vec vector;
-	private static boolean broadCast = true;
-	private static boolean trainOnline = false;
-	private static long lastSent = 0;
-	private static long waitTime = 1000;
 	private static File path;
+	private static Word2Vec vector;
+	private static PrintStream oldOut;
+	private static NullPrintStream nullOut;
 	
 	public static void main(String[] args) throws ResourceInitializationException, IOException {
+		oldOut = System.out;
+		nullOut = new NullPrintStream();
+		
 		path = new File("vmodel.dat");
-		if(path.exists()) {
-			System.out.println("VModel detected, loading...");
-			vector = SerializationUtils.readObject(path);
-			
-			System.out.println(vector.similarity("man", "woman"));
-			System.out.println(vector.similarity("day", "night"));
-			System.out.println(vector.similarity("day", "gauntlet"));
-			System.out.println(vector.similarity("chair", "treaty"));
-			
-			//TODO:
-			//Condition for training online
-			for(String s : args) {
-				if(s.equals("--trainOnline")) {
-					trainOnline = true;
-					break;
-				}
-			}
-			if(trainOnline) {
-				trainAndSave(vector);
-			}
+		
+		File googleBin = new File("google.bin");
+		if(googleBin.exists()) {
+			print("Loading Google binary model");
+			vector = (Word2Vec) WordVectorSerializer.loadGoogleModel(googleBin, true);
 		} else {
-			System.out.println("No existing VModel, training...");
-			trainAndSave(null);
+			print("Fallback to vModel");
+			if(path.exists()) {
+				print("VModel detected, loading...");
+				vector = WordVectorSerializer.loadFullModel(path.getAbsolutePath());
+
+				boolean trainOnline = false;
+				if(trainOnline) {
+					//TODO: implement online training
+					trainAndSave(vector);
+				}
+			} else {
+				print("No existing VModel, training...");
+				trainAndSave(null);
+			}
 		}
+		
+		//Test vector
+		print("Vector for king: ");
+		print(Arrays.toString(vector.getWordVector("king")));
+		print("");
+		
+		print("Vector for war: ");
+		print(Arrays.toString(vector.getWordVector("war")));
+		print("");
 	}
 	
 	private static void trainAndSave(Word2Vec provided) {
 		File training = new File("trainDir/");
-		SentenceIterator iter = new FileSentenceIterator(new SentencePreProcessor() {
-			private static final long serialVersionUID = -8826025951397717234L;
+		if(training.isDirectory() && training.list().length > 0) {
+			print("Training with " + training.list().length + " input files");
+			SentenceIterator iter = new FileSentenceIterator(new SentencePreProcessor() {
+				private static final long serialVersionUID = -8826025951397717234L;
 
-			public String preProcess(String sentence) {
-				return new InputHomogenization(sentence).transform();
-			}
-		}, training);
-		TokenizerFactory tf;
-		try {
-			tf = new UimaTokenizerFactory();
-			if(provided == null) {
-				vector = new Word2Vec.Builder().windowSize(5).layerSize(300)
-						.iterate(iter).tokenizerFactory(tf).build();
-			} else {
-				vector = provided;
-				System.out.println("Online training vectors");
-			}
-			vector.fit();
-		} catch (Exception e) { e.printStackTrace(); }
-		startListener();
-		pushNotification("Finished training");
-		SerializationUtils.saveObject(vector, path);
-		System.out.println("Network solidified");
-	}
-	
-	private static void startListener() {
-		(new Thread() {
-			public void run() {
-				LoggedPrintStream lpsOut = LoggedPrintStream.create(System.out);
-				while(App.broadCast) {
-					try {
-						String last = null;
-						System.setOut(lpsOut);
-						last = lpsOut.getBuf().toString();
-						if(last != null) {
-							if(last.contains("Building binary tree")) {
-								App.broadCast = false;
-								pushNotification("Constructing binary tree structure");
-							} else if(last.contains("Sent")) {
-								//int sentIndex = last.indexOf("Sent");
-								String[] split = last.split(" ");								
-								int numberSent = -1;
-								try {
-									numberSent = Integer.parseInt(split[split.length - 1].trim());
-								} catch (Exception e) {
-									continue;
-								}
-								if(numberSent < 2000000 && (numberSent % 1000000) == 0
-								   || numberSent > 2000000 && (numberSent % 200000) == 0) {
-									pushNotification("Lines sent: " + numberSent);
-								}
-							}
-						}
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-					try {
-						Thread.sleep(400);
-					} catch (InterruptedException e) {}
+				public String preProcess(String sentence) {
+					return new InputHomogenization(sentence).transform();
 				}
+			}, training);
+			
+			try {
+				if(provided == null) {
+					print("Offline training enabled");
+					InMemoryLookupCache cache = new InMemoryLookupCache();
+					vector = new Word2Vec.Builder().windowSize(5).layerSize(300)
+							 .iterate(iter).tokenizerFactory(new UimaTokenizerFactory())
+							 .vocabCache(cache)
+							 .build();
+				} else {
+					vector = provided;
+					print("Online training vectors");
+				}
+				vector.fit();
+			} catch (Exception e) { e.printStackTrace(); }
+			print("Network solidified");
+			
+			try {
+				WordVectorSerializer.writeFullModel(vector, path.getName());
+				print("Network serialized");
+			} catch(Exception ex) {
+				ex.printStackTrace(oldOut);
 			}
-		}).start();
+		} else {
+			print("Empty training dir");
+		}
 	}
 	
-	private static void pushNotification(String pushText) {
-		try {
-			if(System.currentTimeMillis() > (lastSent + waitTime)) {
-				PushbulletClient client = new PushbulletClient("krOLMrMTBdeIIx8Qxn3uLY6Fh9Dhv436");
-		        client.sendNote(null, "NLP Status", pushText);
-		        lastSent = System.currentTimeMillis() + 500; //Buffer of 500ms of wait time
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			waitTime = 1800000; //Adds a half hour pause for rate-limiting
-		}
+	private static void print(String str) {
+		System.setOut(oldOut);
+		System.out.println(str);
+		System.setOut(nullOut);
 	}
 }
